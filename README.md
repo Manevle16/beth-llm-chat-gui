@@ -1,3 +1,9 @@
+# NONAI PART
+Fully vibe coded
+Just testing out how good cursor is and creating myself my own llm chatting UI
+similar to chatgpt whenever llm models are cheaper
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
