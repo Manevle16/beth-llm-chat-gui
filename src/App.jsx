@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { ApolloProvider } from "@apollo/client";
 import client from "./service/apollo";
 import WidgetContext from "./context/widget-context";
@@ -17,10 +17,10 @@ function App() {
     error: gqlError,
     getConversations,
     getMessages,
-    sendMessage,
     createConversation,
     deleteConversation,
     deleteMessagesAfter,
+    terminateStream,
     getAvailableModels,
     clearError: clearGQLError
   } = useGraphQL();
@@ -32,6 +32,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
@@ -41,11 +42,28 @@ function App() {
   const [modelsError, setModelsError] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [newMessage, setNewMessage] = useState("");
+  
+  // Optimize setNewMessage to prevent unnecessary re-renders
+  const handleSetNewMessage = useCallback((value) => {
+    setNewMessage(value);
+  }, []);
   const messagesEndRef = useRef(null);
-  const shouldScrollRef = useRef(true);
+  
+  // Auto-scroll state from MessageList component
+  const [autoScrollState, setAutoScrollState] = useState({
+    autoScrollEnabled: true,
+    userHasScrolledUp: false,
+    scrollPosition: 'at_bottom',
+    shouldShowDownArrow: false
+  });
+
+  // Handle auto-scroll state changes from MessageList
+  const handleAutoScrollStateChange = useCallback((newState) => {
+    setAutoScrollState(newState);
+  }, []);
 
   // Fetch conversations
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     setLoadingConversations(true);
     try {
       const data = await getConversations();
@@ -55,25 +73,24 @@ function App() {
     } finally {
       setLoadingConversations(false);
     }
-  };
+  }, [getConversations]);
 
   // Fetch messages for selected conversation
-  const loadMessages = async (conversationId = selectedConversation) => {
+  const loadMessages = useCallback(async (conversationId = selectedConversation) => {
     if (!conversationId) return;
     setLoadingMessages(true);
     try {
       const data = await getMessages(conversationId);
       setMessages(data.messages || []);
-      shouldScrollRef.current = true; // Set scroll flag to true after messages are loaded
     } catch (err) {
       setError("Failed to load messages");
     } finally {
       setLoadingMessages(false);
     }
-  };
+  }, [selectedConversation, getMessages]);
 
   // Fetch available models for modal
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     setLoadingModels(true);
     setModelsError(null);
     try {
@@ -87,13 +104,13 @@ function App() {
     } finally {
       setLoadingModels(false);
     }
-  };
+  }, [getAvailableModels]);
 
   // Initial load
   useEffect(() => {
     loadConversations();
     loadModels();
-  }, []);
+  }, [loadConversations, loadModels]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -102,39 +119,22 @@ function App() {
     } else {
       setMessages([]);
     }
-  }, [selectedConversation]);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (messagesEndRef.current && shouldScrollRef.current) {
-      // Use setTimeout to ensure DOM is updated
-      setTimeout(() => {
-        if (messagesEndRef.current && shouldScrollRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-      }, 0);
-    }
-  }, [messages]);
-
-  // Reset scroll flag when conversation changes
-  useEffect(() => {
-    shouldScrollRef.current = true;
-  }, [selectedConversation]);
+  }, [selectedConversation, loadMessages]);
 
   // Handlers
-  const handleSelectConversation = (id) => {
+  const handleSelectConversation = useCallback((id) => {
     setSelectedConversation(id);
     setOpenMenuId(null);
     setError(null);
-  };
+  }, []);
 
-  const handleNewConversation = () => {
+  const handleNewConversation = useCallback(() => {
     setModalTitle("");
     setShowModal(true);
     setError(null);
-  };
+  }, []);
 
-  const handleCreateConversation = async () => {
+  const handleCreateConversation = useCallback(async () => {
     if (!modalTitle.trim() || !modalModel) return;
     try {
       const id = Date.now().toString();
@@ -147,9 +147,9 @@ function App() {
     } catch (err) {
       setError("Failed to create conversation");
     }
-  };
+  }, [modalTitle, modalModel, availableModels, createConversation, loadConversations]);
 
-  const handleDeleteConversation = async (id) => {
+  const handleDeleteConversation = useCallback(async (id) => {
     if (!window.confirm("Delete this conversation?")) return;
     try {
       await deleteConversation(id);
@@ -161,9 +161,9 @@ function App() {
     } catch (err) {
       setError("Failed to delete conversation");
     }
-  };
+  }, [deleteConversation, loadConversations, selectedConversation]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!newMessage.trim() || !selectedConversation) return;
     const conversation = conversations.find((c) => c.id === selectedConversation);
     if (!conversation) {
@@ -172,8 +172,8 @@ function App() {
     }
     const model = conversation.llmModel;
     setStreaming(true);
+    setCurrentSessionId(null);
     setError(null);
-    shouldScrollRef.current = true; // Ensure we scroll for new messages
 
     const userMsg = {
       id: `user-${Date.now()}`,
@@ -185,7 +185,6 @@ function App() {
     // Optimistically add user message
     setMessages((prev) => [...prev, userMsg]);
     setNewMessage("");
-    let assistantText = "";
     let assistantMsg = null;
     // Add a placeholder for the assistant message immediately after user message
     assistantMsg = {
@@ -196,6 +195,7 @@ function App() {
       timestamp: new Date().toISOString()
     };
     setMessages((prev) => [...prev, assistantMsg]);
+
     try {
       const response = await fetch("https://localhost:3443/api/stream-message", {
         method: "POST",
@@ -229,6 +229,9 @@ function App() {
                   prev.map((msg) => (msg.id === assistantMsg.id ? { ...msg, text: assistantText || "..." } : msg))
                 );
               }
+            } else if (event.startsWith("event: session")) {
+              const data = JSON.parse(event.split("data: ")[1] || "{}");
+              setCurrentSessionId(data.sessionId);
             } else if (event.startsWith("event: end")) {
               done = true;
             } else if (event.startsWith("event: error")) {
@@ -243,22 +246,41 @@ function App() {
       setError("Failed to send or stream message");
     } finally {
       setStreaming(false);
+      setCurrentSessionId(null);
     }
-  };
+  }, [newMessage, selectedConversation, conversations]);
 
-  const handleDeleteMessagesAfter = async (conversationId, messageId) => {
+  const handleTerminateStream = useCallback(async () => {
+    if (!currentSessionId || !selectedConversation) return;
+    
+    try {
+      const result = await terminateStream(currentSessionId, selectedConversation);
+      if (result.terminateStream.success) {
+        setStreaming(false);
+        setCurrentSessionId(null);
+        // Optionally show a success message or update the UI
+        console.log("Stream terminated successfully:", result.terminateStream.message);
+      } else {
+        setError("Failed to terminate stream: " + (result.terminateStream.error || "Unknown error"));
+      }
+    } catch (err) {
+      setError("Failed to terminate stream");
+    }
+  }, [currentSessionId, selectedConversation, terminateStream]);
+
+  const handleDeleteMessagesAfter = useCallback(async (conversationId, messageId) => {
     try {
       await deleteMessagesAfter(conversationId, messageId);
       await loadMessages(conversationId);
     } catch (err) {
       setError("Failed to delete messages");
     }
-  };
+  }, [deleteMessagesAfter, loadMessages]);
 
-  const handleClearError = () => {
+  const handleClearError = useCallback(() => {
     setError(null);
     clearGQLError();
-  };
+  }, [clearGQLError]);
 
   return (
     <ApolloProvider client={client}>
@@ -274,36 +296,39 @@ function App() {
             setOpenMenuId={setOpenMenuId}
             handleDeleteConversation={handleDeleteConversation}
           />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-            <ErrorBanner error={error || gqlError} onClear={handleClearError} />
-            {(gqlLoading || loadingConversations) && <Loader />}
-            <ChatPanel
+                      <ChatPanel
               messages={messages}
               loadingMessages={loadingMessages}
               streaming={streaming}
               error={error}
               onSendMessage={handleSendMessage}
               newMessage={newMessage}
-              setNewMessage={setNewMessage}
+              setNewMessage={handleSetNewMessage}
               messagesEndRef={messagesEndRef}
               selectedConversation={selectedConversation}
               deleteMessagesAfter={handleDeleteMessagesAfter}
               loadMessages={loadMessages}
               setError={setError}
+              onTerminateStream={handleTerminateStream}
+              currentSessionId={currentSessionId}
+              onAutoScrollStateChange={handleAutoScrollStateChange}
             />
-          </div>
-          <NewConversationModal
-            show={showModal}
-            onClose={() => setShowModal(false)}
-            onCreate={handleCreateConversation}
-            modalTitle={modalTitle}
-            setModalTitle={setModalTitle}
-            modalModel={modalModel}
-            setModalModel={setModalModel}
-            availableModels={availableModels}
-            loadingModels={loadingModels}
-            modelsError={modelsError}
-          />
+          {showModal && (
+            <NewConversationModal
+              show={showModal}
+              onClose={() => setShowModal(false)}
+              title={modalTitle}
+              setTitle={setModalTitle}
+              model={modalModel}
+              setModel={setModalModel}
+              availableModels={availableModels}
+              loadingModels={loadingModels}
+              modelsError={modelsError}
+              onCreateConversation={handleCreateConversation}
+            />
+          )}
+          {error && <ErrorBanner error={error} onClear={handleClearError} />}
+          {gqlLoading && <Loader />}
         </div>
       </WidgetContext.Provider>
     </ApolloProvider>

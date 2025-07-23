@@ -1,7 +1,7 @@
 import React from "react";
 import { FaTrash } from "react-icons/fa";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import {MarkdownHooks} from "react-markdown";
+import rehypeStarryNight from 'rehype-starry-night'
 
 // Helper for timestamp formatting (copy from main file or import if shared)
 const formatTimestamp = (timestamp) => {
@@ -16,7 +16,13 @@ const formatTimestamp = (timestamp) => {
   return date.toLocaleString();
 };
 
-const MessageBubble = ({ msg, selectedConversation, deleteMessagesAfter, loadMessages, setError }) => (
+const MessageBubble = ({ 
+  msg, 
+  selectedConversation, 
+  deleteMessagesAfter, 
+  loadMessages, 
+  setError
+}) => (
   <div
     style={{
       marginBottom: "24px",
@@ -75,7 +81,7 @@ const MessageBubble = ({ msg, selectedConversation, deleteMessagesAfter, loadMes
     >
       {msg.sender === "llm" ? (
         <>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+          <MarkdownHooks rehypePlugins={[rehypeStarryNight]}>{msg.text}</MarkdownHooks>
           {msg.llmResponseTime && (
             <div style={{ fontSize: "11px", color: "#f7e08c", textAlign: "right", marginTop: 4 }}>
               ⏱️ {msg.llmResponseTime}s

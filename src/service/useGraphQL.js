@@ -4,8 +4,7 @@ import {
   GET_MESSAGES,
   GET_CONVERSATIONS,
   SEND_MESSAGE,
-  CREATE_CONVERSATION,
-  DELETE_CONVERSATION
+  CREATE_CONVERSATION
 } from "./graphqlService";
 
 export const useGraphQL = () => {
@@ -95,6 +94,9 @@ export const useGraphQL = () => {
     }, []),
     deleteMessagesAfter: useCallback(async (conversationId, messageId) => {
       return graphQLService.deleteMessagesAfter(conversationId, messageId);
+    }, []),
+    terminateStream: useCallback(async (sessionId, conversationId, password = null, reason = null) => {
+      return graphQLService.terminateStream(sessionId, conversationId, password, reason);
     }, []),
     getAvailableModels: useCallback(async () => {
       return graphQLService.getAvailableModels();

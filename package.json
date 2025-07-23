@@ -16,6 +16,7 @@
     "react-markdown": "^10.1.0",
     "react-scripts": "5.0.1",
     "redux": "^5.0.1",
+    "rehype-starry-night": "^2.2.0",
     "remark-gfm": "^4.0.1",
     "sass": "^1.89.2",
     "web-vitals": "^2.1.0"
@@ -43,5 +44,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "react-devtools": "^6.1.5"
   }
 }

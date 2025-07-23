@@ -98,6 +98,21 @@ export const DELETE_MESSAGES_AFTER = gql`
   }
 `;
 
+export const TERMINATE_STREAM = gql`
+  mutation TerminateStream($input: TerminateStreamInput!) {
+    terminateStream(input: $input) {
+      success
+      sessionId
+      message
+      partialResponse
+      tokenCount
+      finalStatus
+      terminationReason
+      error
+    }
+  }
+`;
+
 // Service class for GraphQL operations
 class GraphQLService {
   // Generic query method
@@ -182,6 +197,16 @@ class GraphQLService {
 
   async deleteMessagesAfter(conversationId, messageId) {
     return this.mutate(DELETE_MESSAGES_AFTER, { conversationId, messageId });
+  }
+
+  async terminateStream(sessionId, conversationId, password = null, reason = null) {
+    const input = {
+      sessionId,
+      conversationId,
+      password,
+      reason
+    };
+    return this.mutate(TERMINATE_STREAM, { input });
   }
 
   // Method to set authentication token
