@@ -1,7 +1,8 @@
 import React from "react";
 import { FaTrash } from "react-icons/fa";
-import {MarkdownHooks} from "react-markdown";
-import rehypeStarryNight from 'rehype-starry-night'
+import Markdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 // Helper for timestamp formatting (copy from main file or import if shared)
 const formatTimestamp = (timestamp) => {
@@ -76,12 +77,35 @@ const MessageBubble = ({
       style={{
         color: "#f8fafc",
         lineHeight: "1.5",
-        fontSize: "14px"
+        fontSize: "14px",
+        textAlign: "left"
       }}
     >
       {msg.sender === "llm" ? (
         <>
-          <MarkdownHooks rehypePlugins={[rehypeStarryNight]}>{msg.text}</MarkdownHooks>
+          <Markdown
+            components={{
+              code({node, inline, className, children, ...props}) {
+                const match = /language-(\w+)/.exec(className || '')
+                return !inline && match ? (
+                  <SyntaxHighlighter
+                    {...props}
+                    PreTag="div"
+                    language={match[1]}
+                    style={dark}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code {...props} className={className}>
+                    {children}
+                  </code>
+                )
+              }
+            }}
+          >
+            {msg.text}
+          </Markdown>
           {msg.llmResponseTime && (
             <div style={{ fontSize: "11px", color: "#f7e08c", textAlign: "right", marginTop: 4 }}>
               ⏱️ {msg.llmResponseTime}s

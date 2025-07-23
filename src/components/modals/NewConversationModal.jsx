@@ -4,7 +4,7 @@ const NewConversationModal = ({
   show,
   onClose,
   onCreate,
-  modalTitle,
+  modalTitle = "",
   setModalTitle,
   modalModel,
   setModalModel,
@@ -103,7 +103,7 @@ const NewConversationModal = ({
               cursor: "pointer",
               boxShadow: "0 2px 8px rgba(164,143,198,0.10)"
             }}
-            disabled={!modalTitle.trim() || !modalModel}
+            disabled={!modalTitle?.trim() || !modalModel}
           >
             Create
           </button>

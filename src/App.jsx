@@ -317,14 +317,14 @@ function App() {
             <NewConversationModal
               show={showModal}
               onClose={() => setShowModal(false)}
-              title={modalTitle}
-              setTitle={setModalTitle}
-              model={modalModel}
-              setModel={setModalModel}
+              modalTitle={modalTitle}
+              setModalTitle={setModalTitle}
+              modalModel={modalModel}
+              setModalModel={setModalModel}
               availableModels={availableModels}
               loadingModels={loadingModels}
               modelsError={modelsError}
-              onCreateConversation={handleCreateConversation}
+              onCreate={handleCreateConversation}
             />
           )}
           {error && <ErrorBanner error={error} onClear={handleClearError} />}
