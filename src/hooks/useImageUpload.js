@@ -59,18 +59,29 @@ export const useImageUpload = () => {
           const imageData = createImageData(file);
           
           try {
-            // Generate preview
+            // Generate preview first (this is more important for UI)
+            console.log('🔧 [useImageUpload] Generating preview for:', file.name);
             imageData.preview = await imageUploadService.generatePreview(file);
             
-            // Generate hash
-            imageData.hash = await imageHashService.generateHash(file);
-            
-            // Cache the preview
-            imageCache.current.set(imageData.hash, imageData.preview);
+            // Try to generate hash, but don't fail if it doesn't work
+            try {
+              console.log('🔧 [useImageUpload] Generating hash for:', file.name);
+              imageData.hash = await imageHashService.generateHash(file);
+              
+              // Cache the preview with hash if available
+              if (imageData.hash) {
+                imageCache.current.set(imageData.hash, imageData.preview);
+              }
+            } catch (hashError) {
+              console.warn('🔧 [useImageUpload] Hash generation failed for:', file.name, hashError);
+              // Don't set error for hash generation failure - it's not critical
+              // The image can still be uploaded and processed
+              imageData.hash = null;
+            }
             
             return imageData;
           } catch (error) {
-            console.error('Error processing image:', error);
+            console.error('🔧 [useImageUpload] Error processing image:', file.name, error);
             imageData.error = error.message;
             return imageData;
           }

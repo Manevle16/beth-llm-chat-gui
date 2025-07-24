@@ -80,8 +80,25 @@ const ChatPanel = memo(({
   }, [loadingMessages, isScrollingToBottom, autoScrollFunctions]);
 
   // Handle image selection
-  const handleImageSelect = useCallback((files) => {
-    selectImages(files);
+  const handleImageSelect = useCallback((filesOrImageData) => {
+    console.log('🔧 [ChatPanel] handleImageSelect called with:', filesOrImageData);
+    
+    // Check if we received image data objects (from paste) or File objects (from file input)
+    if (filesOrImageData && filesOrImageData.length > 0) {
+      const firstItem = filesOrImageData[0];
+      
+      if (firstItem.file && firstItem.id) {
+        // This is an array of image data objects (from paste)
+        // Extract the file objects and pass them to selectImages
+        console.log('🔧 [ChatPanel] Received image data objects, extracting files');
+        const files = filesOrImageData.map(imgData => imgData.file);
+        selectImages(files);
+      } else {
+        // This is an array of File objects (from file input)
+        console.log('🔧 [ChatPanel] Received File objects, using selectImages');
+        selectImages(filesOrImageData);
+      }
+    }
   }, [selectImages]);
 
   // Handle image removal
@@ -140,8 +157,17 @@ const ChatPanel = memo(({
           
           // Add images to form data
           selectedImages.forEach((image, index) => {
+            console.log('🔧 [ChatPanel] Processing image for formData:', image);
+            console.log('🔧 [ChatPanel] Image file:', image.file);
+            console.log('🔧 [ChatPanel] Image file type:', typeof image.file);
+            console.log('🔧 [ChatPanel] Image file instanceof File:', image.file instanceof File);
+            console.log('🔧 [ChatPanel] Image file instanceof Blob:', image.file instanceof Blob);
+            
             if (image.file) {
+              console.log('🔧 [ChatPanel] Appending file to formData:', image.file.name, image.file.size, image.file.type);
               formData.append('images', image.file);
+            } else {
+              console.error('🔧 [ChatPanel] No file found in image:', image);
             }
           });
 

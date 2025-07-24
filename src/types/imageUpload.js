@@ -180,12 +180,63 @@ export const validateFile = (file) => {
 // Hash generation utility
 export const generateImageHash = async (file) => {
   try {
-    const arrayBuffer = await file.arrayBuffer();
+    console.log('🔧 [generateImageHash] Processing file:', file?.name, file?.type, file?.size);
+    
+    let arrayBuffer;
+    
+    // First, try to use file.arrayBuffer() (modern browsers)
+    if (typeof file.arrayBuffer === 'function') {
+      try {
+        console.log('🔧 [generateImageHash] Using file.arrayBuffer()');
+        arrayBuffer = await file.arrayBuffer();
+      } catch (arrayBufferError) {
+        console.warn('🔧 [generateImageHash] file.arrayBuffer() failed, falling back to FileReader:', arrayBufferError);
+        throw arrayBufferError; // Let it fall through to FileReader
+      }
+    } else {
+      // Fallback to FileReader for clipboard data or older browsers
+      console.log('🔧 [generateImageHash] Using FileReader fallback');
+      arrayBuffer = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          console.log('🔧 [generateImageHash] FileReader onload successful');
+          resolve(e.target.result);
+        };
+        
+        reader.onerror = (e) => {
+          console.error('🔧 [generateImageHash] FileReader error:', e);
+          reject(new Error(`FileReader failed: ${e.target.error?.message || 'Unknown error'}`));
+        };
+        
+        reader.onabort = () => {
+          console.error('🔧 [generateImageHash] FileReader aborted');
+          reject(new Error('File reading was aborted'));
+        };
+        
+        try {
+          console.log('🔧 [generateImageHash] Starting FileReader.readAsArrayBuffer');
+          reader.readAsArrayBuffer(file);
+        } catch (readError) {
+          console.error('🔧 [generateImageHash] FileReader.readAsArrayBuffer threw error:', readError);
+          reject(new Error(`FileReader.readAsArrayBuffer failed: ${readError.message}`));
+        }
+      });
+    }
+    
+    if (!arrayBuffer) {
+      throw new Error('Failed to read file data - no array buffer returned');
+    }
+    
+    console.log('🔧 [generateImageHash] Generating SHA-256 hash');
     const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    console.log('🔧 [generateImageHash] Hash generated successfully:', hashHex.substring(0, 8) + '...');
     return hashHex;
   } catch (error) {
+    console.error('🔧 [generateImageHash] Error generating hash:', error);
     throw new Error(`Failed to generate hash: ${error.message}`);
   }
 };
@@ -193,10 +244,32 @@ export const generateImageHash = async (file) => {
 // Preview generation utility
 export const generateImagePreview = (file) => {
   return new Promise((resolve, reject) => {
+    console.log('🔧 [generateImagePreview] Processing file for preview:', file?.name, file?.type, file?.size);
+    
     const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = () => reject(new Error('Failed to generate preview'));
-    reader.readAsDataURL(file);
+    
+    reader.onload = (e) => {
+      console.log('🔧 [generateImagePreview] Preview generated successfully');
+      resolve(e.target.result);
+    };
+    
+    reader.onerror = (e) => {
+      console.error('🔧 [generateImagePreview] FileReader error:', e);
+      reject(new Error(`Failed to generate preview: ${e.target.error?.message || 'Unknown error'}`));
+    };
+    
+    reader.onabort = () => {
+      console.error('🔧 [generateImagePreview] FileReader aborted');
+      reject(new Error('Preview generation was aborted'));
+    };
+    
+    try {
+      console.log('🔧 [generateImagePreview] Starting FileReader.readAsDataURL');
+      reader.readAsDataURL(file);
+    } catch (readError) {
+      console.error('🔧 [generateImagePreview] FileReader.readAsDataURL threw error:', readError);
+      reject(new Error(`FileReader.readAsDataURL failed: ${readError.message}`));
+    }
   });
 };
 

@@ -276,11 +276,19 @@ class ImageUploadService {
 
   /**
    * Generate preview URL for an image file
-   * @param {File} file - File to generate preview for
+   * @param {File|Object} fileOrImageData - File to generate preview for or image data object
    * @returns {Promise<string>} Data URL
    */
-  async generatePreview(file) {
+  async generatePreview(fileOrImageData) {
     try {
+      // Handle case where we receive an image data object instead of just a file
+      let file = fileOrImageData;
+      if (fileOrImageData && typeof fileOrImageData === 'object' && fileOrImageData.file) {
+        console.log('🔧 [generatePreview] Extracting file from image data object');
+        file = fileOrImageData.file;
+      }
+      
+      console.log('🔧 [generatePreview] Processing file:', file?.name, file?.type, file?.size);
       return await generateImagePreview(file);
     } catch (error) {
       console.error('Preview generation error:', error);
