@@ -314,6 +314,8 @@ function App() {
               onTerminateStream={handleTerminateStream}
               currentSessionId={currentSessionId}
               onAutoScrollStateChange={handleAutoScrollStateChange}
+              setStreaming={setStreaming}
+              setCurrentSessionId={setCurrentSessionId}
             />
           {showModal && (
             <NewConversationModal

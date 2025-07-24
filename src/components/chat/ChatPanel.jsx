@@ -21,7 +21,9 @@ const ChatPanel = memo(({
   setError,
   onTerminateStream,
   currentSessionId,
-  onAutoScrollStateChange
+  onAutoScrollStateChange,
+  setStreaming,
+  setCurrentSessionId
 }) => {
   // Image upload hook
   const {
@@ -118,6 +120,11 @@ const ChatPanel = memo(({
     
     try {
       if (selectedImages && selectedImages.length > 0) {
+        // Set streaming state for image uploads
+        setStreaming(true);
+        setCurrentSessionId(null);
+        setError(null);
+        
         // Create user message with images
         const userMsg = {
           id: `user-${Date.now()}`,
@@ -219,6 +226,7 @@ const ChatPanel = memo(({
                   try {
                     const data = JSON.parse(event.split("data: ")[1] || "{}");
                     sessionId = data.sessionId;
+                    setCurrentSessionId(sessionId);
                   } catch (parseError) {
                     console.warn('Failed to parse session event:', parseError);
                   }
@@ -324,6 +332,10 @@ const ChatPanel = memo(({
           // Remove the placeholder assistant message on error
           setMessages((prev) => prev.filter(msg => msg.id !== assistantMsg.id));
           throw uploadError;
+        } finally {
+          // Always reset streaming state
+          setStreaming(false);
+          setCurrentSessionId(null);
         }
       } else {
         // Send regular text message using the existing onSendMessage
@@ -332,8 +344,11 @@ const ChatPanel = memo(({
     } catch (error) {
       console.error('Error sending message:', error);
       setError(error.message || 'Failed to send message');
+      // Reset streaming state on error
+      setStreaming(false);
+      setCurrentSessionId(null);
     }
-  }, [newMessage, selectedConversation, currentConversation, selectedImages, onSendMessage, setError, setNewMessage, clearImages, setMessages]);
+  }, [newMessage, selectedConversation, currentConversation, selectedImages, onSendMessage, setError, setNewMessage, clearImages, setMessages, setStreaming, setCurrentSessionId]);
 
   // Memoize the MessageList props to prevent unnecessary re-renders
   const messageListProps = useMemo(() => ({

@@ -3,6 +3,10 @@ import { FaTrash, FaTimes } from "react-icons/fa";
 import Markdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import remarkGfm from 'remark-gfm'
+import 'katex/dist/katex.min.css'
 
 // Helper for timestamp formatting (copy from main file or import if shared)
 const formatTimestamp = (timestamp) => {
@@ -189,6 +193,8 @@ const MessageBubble = ({
           {msg.sender === "llm" ? (
             <>
               <Markdown
+                remarkPlugins={[remarkMath, remarkGfm]}
+                rehypePlugins={[rehypeKatex]}
                 components={{
                   code({node, inline, className, children, ...props}) {
                     const match = /language-(\w+)/.exec(className || '')

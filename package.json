@@ -9,6 +9,7 @@
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^13.2.1",
     "graphql": "^16.11.0",
+    "katex": "^0.16.22",
     "react": "^19.1.0",
     "react-combine-reducers": "^1.1.1",
     "react-dom": "^19.1.0",
@@ -17,8 +18,10 @@
     "react-scripts": "5.0.1",
     "react-syntax-highlighter": "^15.6.1",
     "redux": "^5.0.1",
+    "rehype-katex": "^7.0.1",
     "rehype-starry-night": "^2.2.0",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "sass": "^1.89.2",
     "web-vitals": "^2.1.0"
   },
