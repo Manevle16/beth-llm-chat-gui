@@ -29,7 +29,6 @@ const ChatPanel = memo(({
     uploadState: imageUploadState,
     selectImages,
     removeImage,
-    sendMessageWithImages,
     clearImages
   } = useImageUpload();
 
@@ -129,18 +128,88 @@ const ChatPanel = memo(({
         setNewMessage("");
         clearImages();
         
-        // Send message with images using the image upload service
+        // Send message with images using the GraphQL service
         const llmModel = currentConversation?.llmModel || 'qwen2.5vl:32b'; // Default to qwen2.5vl:32b for vision
         
         try {
-          const response = await sendMessageWithImages(selectedConversation, newMessage, llmModel);
+          // Create form data for multipart request
+          const formData = new FormData();
+          formData.append('model', llmModel);
+          formData.append('message', newMessage);
+          formData.append('conversationId', selectedConversation);
           
-          // Update assistant message with the response
-          if (response && response.responseText) {
-            setMessages((prev) =>
-              prev.map((msg) => (msg.id === assistantMsg.id ? { ...msg, text: response.responseText } : msg))
-            );
+          // Add images to form data
+          selectedImages.forEach((image, index) => {
+            if (image.file) {
+              formData.append('images', image.file);
+            }
+          });
+
+          // Make the streaming request directly
+          const response = await fetch("https://localhost:3443/api/stream-message", {
+            method: 'POST',
+            body: formData,
+            // Don't set Content-Type header - let browser set it with boundary
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Stream request failed: ${response.status} ${response.statusText} - ${errorText}`);
           }
+
+          // Handle SSE response for real-time streaming
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let assistantText = "";
+          let sessionId = null;
+          let done = false;
+
+          while (!done) {
+            const { value, done: streamDone } = await reader.read();
+            done = streamDone;
+            
+            if (value) {
+              buffer += decoder.decode(value);
+              // Split on double newlines (SSE event format)
+              const events = buffer.split("\n\n");
+              buffer = events.pop(); // last may be incomplete
+              
+              for (const event of events) {
+                if (event.startsWith("data: ")) {
+                  try {
+                    const data = JSON.parse(event.slice(6));
+                    if (data.token) {
+                      assistantText += data.token;
+                      // Update assistant message in UI in real-time
+                      setMessages((prev) =>
+                        prev.map((msg) => (msg.id === assistantMsg.id ? { ...msg, text: assistantText || "..." } : msg))
+                      );
+                    }
+                  } catch (parseError) {
+                    console.warn('Failed to parse SSE data:', parseError);
+                  }
+                } else if (event.startsWith("event: session")) {
+                  try {
+                    const data = JSON.parse(event.split("data: ")[1] || "{}");
+                    sessionId = data.sessionId;
+                  } catch (parseError) {
+                    console.warn('Failed to parse session event:', parseError);
+                  }
+                } else if (event.startsWith("event: end")) {
+                  done = true;
+                } else if (event.startsWith("event: error")) {
+                  try {
+                    const data = JSON.parse(event.split("data: ")[1] || "{}");
+                    throw new Error(data.error || "Streaming error");
+                  } catch (parseError) {
+                    throw new Error("Streaming error");
+                  }
+                }
+              }
+            }
+          }
+          
         } catch (uploadError) {
           // Remove the placeholder assistant message on error
           setMessages((prev) => prev.filter(msg => msg.id !== assistantMsg.id));
@@ -154,7 +223,7 @@ const ChatPanel = memo(({
       console.error('Error sending message:', error);
       setError(error.message || 'Failed to send message');
     }
-  }, [newMessage, selectedConversation, currentConversation, selectedImages, sendMessageWithImages, onSendMessage, setError, setNewMessage, clearImages, setMessages]);
+  }, [newMessage, selectedConversation, currentConversation, selectedImages, onSendMessage, setError, setNewMessage, clearImages, setMessages]);
 
   // Memoize the MessageList props to prevent unnecessary re-renders
   const messageListProps = useMemo(() => ({

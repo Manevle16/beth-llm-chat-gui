@@ -208,15 +208,73 @@ class GraphQLService {
         }
       });
 
-      // Use the image upload service for multipart submission
-      return imageUploadService.uploadWithStream(formData, {
-        onProgress: (progress) => {
-          console.log('Upload progress:', progress);
-        },
-        onError: (error) => {
-          console.error('Upload error:', error);
-        }
+      // Make the streaming request directly
+      const response = await fetch(`${this.baseUrl}/api/stream-message`, {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type header - let browser set it with boundary
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Stream request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      // Handle SSE response for real-time streaming
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let assistantText = "";
+      let sessionId = null;
+      let done = false;
+
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        
+        if (value) {
+          buffer += decoder.decode(value);
+          // Split on double newlines (SSE event format)
+          const events = buffer.split("\n\n");
+          buffer = events.pop(); // last may be incomplete
+          
+          for (const event of events) {
+            if (event.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(event.slice(6));
+                if (data.token) {
+                  assistantText += data.token;
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', parseError);
+              }
+            } else if (event.startsWith("event: session")) {
+              try {
+                const data = JSON.parse(event.split("data: ")[1] || "{}");
+                sessionId = data.sessionId;
+              } catch (parseError) {
+                console.warn('Failed to parse session event:', parseError);
+              }
+            } else if (event.startsWith("event: end")) {
+              done = true;
+            } else if (event.startsWith("event: error")) {
+              try {
+                const data = JSON.parse(event.split("data: ")[1] || "{}");
+                throw new Error(data.error || "Streaming error");
+              } catch (parseError) {
+                throw new Error("Streaming error");
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        success: true,
+        responseText: assistantText,
+        sessionId: sessionId,
+        responseTime: Date.now()
+      };
 
     } catch (error) {
       console.error("Stream Message with Images Error:", error);

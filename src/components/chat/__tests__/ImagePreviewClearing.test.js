@@ -3,8 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ChatPanel from '../ChatPanel';
 
+// Mock fetch
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
 // Mock the useImageUpload hook
-const mockSendMessageWithImages = jest.fn().mockResolvedValue({ success: true });
 const mockClearImages = jest.fn();
 
 jest.mock('../../../hooks/useImageUpload', () => ({
@@ -21,7 +24,6 @@ jest.mock('../../../hooks/useImageUpload', () => ({
     uploadState: 'IDLE',
     selectImages: jest.fn(),
     removeImage: jest.fn(),
-    sendMessageWithImages: mockSendMessageWithImages,
     clearImages: mockClearImages
   })
 }));
@@ -82,17 +84,33 @@ describe('Image Preview Clearing', () => {
   });
 
   it('clears both text input and images after successfully sending message with images', async () => {
+    // Mock successful fetch response
+    const mockResponse = {
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: jest.fn().mockResolvedValue({
+            done: true,
+            value: new Uint8Array([100, 97, 116, 97, 58, 32, 123, 34, 116, 111, 107, 101, 110, 34, 58, 32, 34, 72, 101, 108, 108, 111, 34, 125, 10, 10, 101, 118, 101, 110, 116, 58, 32, 101, 110, 100, 10, 100, 97, 116, 97, 58, 32, 123, 125, 10, 10])
+          })
+        })
+      }
+    };
+    mockFetch.mockResolvedValue(mockResponse);
+    
     render(<ChatPanel {...defaultProps} />);
     
     const sendButton = screen.getByTestId('send-button');
     fireEvent.click(sendButton);
 
     await waitFor(() => {
-      // Verify that sendMessageWithImages was called
-      expect(mockSendMessageWithImages).toHaveBeenCalledWith(
-        'test-conversation',
-        'test message with image',
-        'qwen2.5vl:32b'
+      // Verify that fetch was called with the correct URL
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://localhost:3443/api/stream-message',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.any(FormData)
+        })
       );
       
       // Verify that text input was cleared
@@ -109,8 +127,8 @@ describe('Image Preview Clearing', () => {
   });
 
   it('clears text input and images immediately when sending, even if it fails', async () => {
-    const errorMessage = 'Upload failed';
-    mockSendMessageWithImages.mockRejectedValueOnce(new Error(errorMessage));
+    const errorMessage = 'Network request failed';
+    mockFetch.mockRejectedValueOnce(new Error(errorMessage));
     
     // Suppress console.error for this test
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
