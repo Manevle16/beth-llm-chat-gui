@@ -298,11 +298,14 @@ export const useImageUpload = () => {
       setUploadState(UPLOAD_STATES.UPLOADING);
       setUploadError(null);
 
+      // Capture current selectedImages to avoid stale closure
+      const currentSelectedImages = selectedImages;
+
       // Use the GraphQL service to send message with images
       const response = await graphQLService.streamMessageWithImages(
         conversationId,
         text,
-        selectedImages,
+        currentSelectedImages,
         llmModel,
         password
       );

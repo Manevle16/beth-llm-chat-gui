@@ -28,7 +28,8 @@ const ChatPanel = memo(({
     uploadState: imageUploadState,
     selectImages,
     removeImage,
-    sendMessageWithImages
+    sendMessageWithImages,
+    clearImages
   } = useImageUpload();
 
   // Auto-scroll state from MessageList
@@ -103,6 +104,10 @@ const ChatPanel = memo(({
         // Send message with images using the image upload service
         const llmModel = currentConversation?.llmModel || 'qwen2.5vl:32b'; // Default to qwen2.5vl:32b for vision
         await sendMessageWithImages(selectedConversation, newMessage, llmModel);
+        // Clear the text input after successful send with images
+        setNewMessage("");
+        // Also clear images to ensure they're removed from the UI
+        clearImages();
       } else {
         // Send regular text message using the existing onSendMessage
         await onSendMessage();
@@ -111,7 +116,7 @@ const ChatPanel = memo(({
       console.error('Error sending message:', error);
       setError(error.message || 'Failed to send message');
     }
-  }, [newMessage, selectedConversation, currentConversation, selectedImages, sendMessageWithImages, onSendMessage, setError]);
+  }, [newMessage, selectedConversation, currentConversation, selectedImages, sendMessageWithImages, onSendMessage, setError, setNewMessage, clearImages]);
 
   // Memoize the MessageList props to prevent unnecessary re-renders
   const messageListProps = useMemo(() => ({
