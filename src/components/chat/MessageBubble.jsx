@@ -51,8 +51,8 @@ const renderImages = (images, isUserMessage = false) => {
                 src={image.url}
                 alt={image.filename || `Image ${index + 1}`}
                 style={{
-                  maxWidth: "200px",
-                  maxHeight: "200px",
+                  maxWidth: "400px",
+                  maxHeight: "400px",
                   width: "auto",
                   height: "auto",
                   display: "block",
@@ -91,22 +91,6 @@ const renderImages = (images, isUserMessage = false) => {
             </div>
           </div>
           
-          {/* Image filename overlay */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              background: "rgba(0, 0, 0, 0.7)",
-              color: "#f8fafc",
-              fontSize: "10px",
-              padding: "4px 8px",
-              textAlign: "center"
-            }}
-          >
-            {image.filename || `Image ${index + 1}`}
-          </div>
         </div>
       )})}
     </div>
