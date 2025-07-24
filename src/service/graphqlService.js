@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 import client from "./apollo";
+import { imageUploadService } from "./imageUploadService";
 
 // Example queries - you can modify these based on your schema
 export const GET_MESSAGES = gql`
@@ -9,6 +10,15 @@ export const GET_MESSAGES = gql`
       text
       sender
       timestamp
+      hasImages
+      images {
+        id
+        filename
+        fileSize
+        mimeType
+        contentHash
+        createdAt
+      }
     }
   }
 `;
@@ -48,12 +58,30 @@ export const SEND_MESSAGE = gql`
         text
         sender
         timestamp
+        hasImages
+        images {
+          id
+          filename
+          fileSize
+          mimeType
+          contentHash
+          createdAt
+        }
       }
       llmMessage {
         id
         text
         sender
         timestamp
+        hasImages
+        images {
+          id
+          filename
+          fileSize
+          mimeType
+          contentHash
+          createdAt
+        }
       }
       llmModel
       error
@@ -150,6 +178,47 @@ class GraphQLService {
       return data;
     } catch (error) {
       console.error("GraphQL Mutation Error:", error);
+      throw error;
+    }
+  }
+
+  // Stream message with optional images using multipart form data
+  async streamMessageWithImages(conversationId, text, images = [], llmModel = null, password = null) {
+    try {
+      // If no images, use regular GraphQL mutation
+      if (!images || images.length === 0) {
+        return this.sendMessage(conversationId, text, "user", password, llmModel);
+      }
+
+      // For images, use multipart form data to stream endpoint
+      const formData = new FormData();
+      formData.append('model', llmModel || 'qwen2.5vl:32b'); // Default to qwen2.5vl:32b for vision
+      formData.append('message', text);
+      formData.append('conversationId', conversationId);
+      
+      if (password) {
+        formData.append('password', password);
+      }
+
+      // Add images to form data
+      images.forEach((image, index) => {
+        if (image.file) {
+          formData.append('images', image.file);
+        }
+      });
+
+      // Use the image upload service for multipart submission
+      return imageUploadService.uploadWithStream(formData, {
+        onProgress: (progress) => {
+          console.log('Upload progress:', progress);
+        },
+        onError: (error) => {
+          console.error('Upload error:', error);
+        }
+      });
+
+    } catch (error) {
+      console.error("Stream Message with Images Error:", error);
       throw error;
     }
   }

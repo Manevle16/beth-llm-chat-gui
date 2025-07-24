@@ -1,6 +1,21 @@
 import React, { useMemo, useCallback, memo } from "react";
+import ImageUploadButton from "./ImageUploadButton";
+import ImagePreview from "./ImagePreview";
 
-const MessageInput = memo(({ onSendMessage, onTerminateStream, newMessage, setNewMessage, streaming, currentSessionId }) => {
+const MessageInput = memo(({ 
+  onSendMessage, 
+  onTerminateStream, 
+  newMessage, 
+  setNewMessage, 
+  streaming, 
+  currentSessionId,
+  // Image upload props
+  selectedImages,
+  onImageSelect,
+  onImageRemove,
+  onImageError,
+  imageUploadState
+}) => {
   // Memoize the onChange handler to prevent re-creation on every render
   const handleChange = useCallback((e) => {
     setNewMessage(e.target.value);
@@ -71,12 +86,33 @@ const MessageInput = memo(({ onSendMessage, onTerminateStream, newMessage, setNe
         borderRadius: "12px"
       }}
     >
+      {/* Image Preview Section */}
+      {selectedImages && selectedImages.length > 0 && (
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "12px",
+            background: "#404b54",
+            borderRadius: "8px",
+            border: "1px solid #46525c"
+          }}
+        >
+          <ImagePreview
+            images={selectedImages}
+            onRemove={onImageRemove}
+            onError={onImageError}
+            uploadState={imageUploadState}
+          />
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
           gap: "12px",
           maxWidth: "800px",
-          margin: "0 auto"
+          margin: "0 auto",
+          alignItems: "flex-end"
         }}
       >
         <input
@@ -87,6 +123,14 @@ const MessageInput = memo(({ onSendMessage, onTerminateStream, newMessage, setNe
           placeholder={placeholderText}
           style={inputStyles}
         />
+        
+        {/* Image Upload Button */}
+        <ImageUploadButton
+          onImageSelect={onImageSelect}
+          disabled={streaming}
+          uploadState={imageUploadState}
+        />
+        
         <button
           onClick={handleButtonClick}
           disabled={streaming && !currentSessionId}

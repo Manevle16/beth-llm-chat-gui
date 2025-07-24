@@ -49,7 +49,6 @@ const MessageList = memo(({
   // Handle auto-scroll errors
   useEffect(() => {
     if (autoScrollError && setError) {
-      console.warn('Auto-scroll error:', autoScrollError);
       // Don't show auto-scroll errors to user as they're not critical
       // Just log them for debugging
     }

@@ -326,7 +326,6 @@ export const useAutoScroll = () => {
   const autoScrollToBottom = useCallback(() => {
     // IMMEDIATE check - don't scroll if auto-scroll is disabled
     if (!autoScrollEnabled || !scrollContainerRef.current) {
-      console.log('Auto-scroll disabled, not scrolling to bottom');
       return;
     }
     

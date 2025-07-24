@@ -306,6 +306,7 @@ function App() {
               setNewMessage={handleSetNewMessage}
               messagesEndRef={messagesEndRef}
               selectedConversation={selectedConversation}
+              currentConversation={conversations.find(c => c.id === selectedConversation)}
               deleteMessagesAfter={handleDeleteMessagesAfter}
               loadMessages={loadMessages}
               setError={setError}

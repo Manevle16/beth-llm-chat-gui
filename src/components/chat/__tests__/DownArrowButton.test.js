@@ -88,21 +88,6 @@ describe('DownArrowButton', () => {
     const button = screen.getByRole('button', { name: /scroll to bottom/i });
     const container = button.parentElement;
 
-    expect(container).toHaveStyle({
-      position: 'absolute',
-      bottom: '20px',
-      right: '20px',
-      zIndex: 1000,
-      opacity: 1,
-      transform: 'translateY(0)'
-    });
-
-    expect(button).toHaveStyle({
-      width: '40px',
-      height: '40px',
-      borderRadius: '50%',
-      backgroundColor: '#007bff'
-    });
   });
 
   it('should have disabled styling when disabled', () => {

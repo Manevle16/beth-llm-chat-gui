@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, memo } from "react";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import DownArrowButton from "./DownArrowButton";
+import { useImageUpload } from "../../hooks/useImageUpload";
 
 const ChatPanel = memo(({
   messages,
@@ -13,6 +14,7 @@ const ChatPanel = memo(({
   setNewMessage,
   messagesEndRef,
   selectedConversation,
+  currentConversation,
   deleteMessagesAfter,
   loadMessages,
   setError,
@@ -20,6 +22,15 @@ const ChatPanel = memo(({
   currentSessionId,
   onAutoScrollStateChange
 }) => {
+  // Image upload hook
+  const {
+    selectedImages,
+    uploadState: imageUploadState,
+    selectImages,
+    removeImage,
+    sendMessageWithImages
+  } = useImageUpload();
+
   // Auto-scroll state from MessageList
   const [autoScrollState, setAutoScrollState] = useState({
     autoScrollEnabled: true,
@@ -67,6 +78,41 @@ const ChatPanel = memo(({
     }
   }, [loadingMessages, isScrollingToBottom, autoScrollFunctions]);
 
+  // Handle image selection
+  const handleImageSelect = useCallback((files) => {
+    selectImages(files);
+  }, [selectImages]);
+
+  // Handle image removal
+  const handleImageRemove = useCallback((index) => {
+    removeImage(index);
+  }, [removeImage]);
+
+  // Handle image error
+  const handleImageError = useCallback((error) => {
+    console.error('Image error:', error);
+    // The error is already handled by the hook, just log it
+  }, []);
+
+  // Handle sending message with or without images
+  const handleSendMessage = useCallback(async () => {
+    if (!newMessage.trim() || !selectedConversation) return;
+    
+    try {
+      if (selectedImages && selectedImages.length > 0) {
+        // Send message with images using the image upload service
+        const llmModel = currentConversation?.llmModel || 'qwen2.5vl:32b'; // Default to qwen2.5vl:32b for vision
+        await sendMessageWithImages(selectedConversation, newMessage, llmModel);
+      } else {
+        // Send regular text message using the existing onSendMessage
+        await onSendMessage();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setError(error.message || 'Failed to send message');
+    }
+  }, [newMessage, selectedConversation, currentConversation, selectedImages, sendMessageWithImages, onSendMessage, setError]);
+
   // Memoize the MessageList props to prevent unnecessary re-renders
   const messageListProps = useMemo(() => ({
     messages,
@@ -83,13 +129,19 @@ const ChatPanel = memo(({
 
   // Memoize the MessageInput props to prevent unnecessary re-renders
   const messageInputProps = useMemo(() => ({
-    onSendMessage,
+    onSendMessage: handleSendMessage,
     onTerminateStream,
     newMessage,
     setNewMessage,
     streaming,
-    currentSessionId
-  }), [onSendMessage, onTerminateStream, newMessage, setNewMessage, streaming, currentSessionId]);
+    currentSessionId,
+    // Image upload props
+    selectedImages,
+    onImageSelect: handleImageSelect,
+    onImageRemove: handleImageRemove,
+    onImageError: handleImageError,
+    imageUploadState
+  }), [handleSendMessage, onTerminateStream, newMessage, setNewMessage, streaming, currentSessionId, selectedImages, handleImageSelect, handleImageRemove, handleImageError, imageUploadState]);
 
   // Memoize the down arrow visibility
   const downArrowVisible = useMemo(() => {

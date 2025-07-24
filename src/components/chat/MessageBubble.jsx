@@ -17,6 +17,96 @@ const formatTimestamp = (timestamp) => {
   return date.toLocaleString();
 };
 
+// Helper to render images in messages
+const renderImages = (images, isUserMessage = false) => {
+  if (!images || images.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        marginBottom: "12px",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "8px"
+      }}
+    >
+      {images.map((image, index) => (
+        <div
+          key={image.id || index}
+          style={{
+            position: "relative",
+            borderRadius: "8px",
+            overflow: "hidden",
+            border: "2px solid #46525c",
+            background: "#404b54"
+          }}
+        >
+          {image.url ? (
+            <img
+              src={image.url}
+              alt={image.filename || `Image ${index + 1}`}
+              style={{
+                maxWidth: "200px",
+                maxHeight: "200px",
+                width: "auto",
+                height: "auto",
+                display: "block",
+                objectFit: "cover"
+              }}
+              onError={(e) => {
+                console.error(`Failed to load image: ${image.url}`);
+                e.target.style.display = "none";
+                e.target.nextSibling.style.display = "flex";
+              }}
+            />
+          ) : null}
+          
+          {/* Fallback for failed images */}
+          <div
+            style={{
+              display: image.url ? "none" : "flex",
+              width: "200px",
+              height: "200px",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#404b54",
+              color: "#e5e7eb",
+              fontSize: "12px",
+              textAlign: "center",
+              padding: "8px"
+            }}
+          >
+            <div>
+              <div style={{ marginBottom: "4px" }}>📷</div>
+              <div>{image.filename || "Image"}</div>
+              <div style={{ fontSize: "10px", opacity: 0.7 }}>
+                {image.error || "Failed to load"}
+              </div>
+            </div>
+          </div>
+          
+          {/* Image filename overlay */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: "rgba(0, 0, 0, 0.7)",
+              color: "#f8fafc",
+              fontSize: "10px",
+              padding: "4px 8px",
+              textAlign: "center"
+            }}
+          >
+            {image.filename || `Image ${index + 1}`}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const MessageBubble = ({ 
   msg, 
   selectedConversation, 
@@ -73,6 +163,10 @@ const MessageBubble = ({
     >
       {msg.sender === "user" ? "You" : "Assistant"}
     </div>
+    
+    {/* Render images if present */}
+    {msg.images && renderImages(msg.images, msg.sender === "user")}
+    
     <div
       style={{
         color: "#f8fafc",
