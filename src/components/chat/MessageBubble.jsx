@@ -21,6 +21,9 @@ const formatTimestamp = (timestamp) => {
 const renderImages = (images, isUserMessage = false) => {
   if (!images || images.length === 0) return null;
 
+  console.log('🖼️ [MessageBubble] Rendering images:', images);
+  console.log('🖼️ [MessageBubble] Is user message:', isUserMessage);
+
   return (
     <div
       style={{
@@ -30,36 +33,39 @@ const renderImages = (images, isUserMessage = false) => {
         gap: "8px"
       }}
     >
-      {images.map((image, index) => (
-        <div
-          key={image.id || index}
-          style={{
-            position: "relative",
-            borderRadius: "8px",
-            overflow: "hidden",
-            border: "2px solid #46525c",
-            background: "#404b54"
-          }}
-        >
-          {image.url ? (
-            <img
-              src={image.url}
-              alt={image.filename || `Image ${index + 1}`}
-              style={{
-                maxWidth: "200px",
-                maxHeight: "200px",
-                width: "auto",
-                height: "auto",
-                display: "block",
-                objectFit: "cover"
-              }}
-              onError={(e) => {
-                console.error(`Failed to load image: ${image.url}`);
-                e.target.style.display = "none";
-                e.target.nextSibling.style.display = "flex";
-              }}
-            />
-          ) : null}
+      {images.map((image, index) => {
+        console.log('🖼️ [MessageBubble] Rendering image:', image);
+        return (
+          <div
+            key={image.id || index}
+            style={{
+              position: "relative",
+              borderRadius: "8px",
+              overflow: "hidden",
+              border: "2px solid #46525c",
+              background: "#404b54"
+            }}
+          >
+            {image.url ? (
+              <img
+                src={image.url}
+                alt={image.filename || `Image ${index + 1}`}
+                style={{
+                  maxWidth: "200px",
+                  maxHeight: "200px",
+                  width: "auto",
+                  height: "auto",
+                  display: "block",
+                  objectFit: "cover"
+                }}
+                onLoad={() => console.log('🖼️ [MessageBubble] Image loaded successfully:', image.url)}
+                onError={(e) => {
+                  console.error('🖼️ [MessageBubble] Failed to load image:', image.url, e);
+                  e.target.style.display = "none";
+                  e.target.nextSibling.style.display = "flex";
+                }}
+              />
+            ) : null}
           
           {/* Fallback for failed images */}
           <div
@@ -102,7 +108,7 @@ const renderImages = (images, isUserMessage = false) => {
             {image.filename || `Image ${index + 1}`}
           </div>
         </div>
-      ))}
+      )})}
     </div>
   );
 };

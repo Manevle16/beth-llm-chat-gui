@@ -205,6 +205,90 @@ const ChatPanel = memo(({
                   } catch (parseError) {
                     throw new Error("Streaming error");
                   }
+                } else if (event.startsWith("event: images")) {
+                  try {
+                    const data = JSON.parse(event.split("data: ")[1] || "{}");
+                    console.log('🎯 [FRONTEND] Images processed event received:', data);
+                    console.log('🎯 [FRONTEND] User message ID:', userMsg.id);
+                    
+                    // Update the user message with processed image data
+                    if (data.processed > 0 && data.images) {
+                      console.log('🎯 [FRONTEND] Updating user message with processed images:', data.images);
+                      
+                      // Convert the already uploaded images to base64
+                      const convertUploadedImagesToBase64 = async () => {
+                        const base64Images = [];
+                        
+                        // Use the original selectedImages that were uploaded
+                        for (const originalImage of selectedImages) {
+                          try {
+                            console.log('🎯 [FRONTEND] Converting uploaded image to base64:', originalImage);
+                            
+                            if (originalImage.file) {
+                              const reader = new FileReader();
+                              
+                              const base64Promise = new Promise((resolve, reject) => {
+                                reader.onload = () => resolve(reader.result);
+                                reader.onerror = reject;
+                              });
+                              
+                              reader.readAsDataURL(originalImage.file);
+                              const base64Data = await base64Promise;
+                              
+                              // Find the corresponding processed image data from backend
+                              const processedImage = data.images.find(img => 
+                                img.filename === originalImage.filename || 
+                                img.id === originalImage.id
+                              );
+                              
+                              base64Images.push({
+                                id: processedImage?.id || originalImage.id,
+                                filename: processedImage?.filename || originalImage.filename,
+                                url: base64Data, // Use base64 data from uploaded file
+                                size: originalImage.file.size,
+                                mimeType: originalImage.file.type
+                              });
+                              
+                              console.log('🎯 [FRONTEND] Successfully converted uploaded image to base64:', originalImage.filename);
+                            } else {
+                              console.warn('🎯 [FRONTEND] No file found in uploaded image:', originalImage);
+                            }
+                          } catch (error) {
+                            console.error('🎯 [FRONTEND] Error converting uploaded image to base64:', error);
+                          }
+                        }
+                        
+                        return base64Images;
+                      };
+                      
+                      // Convert uploaded images to base64 and update message
+                      convertUploadedImagesToBase64().then(base64Images => {
+                        console.log('🎯 [FRONTEND] Converted uploaded images to base64:', base64Images);
+                        
+                        // Update the user message with the base64 image data
+                        setMessages((prev) => {
+                          console.log('🎯 [FRONTEND] Current messages before update:', prev);
+                          const updatedMessages = prev.map((msg) => {
+                            if (msg.id === userMsg.id) {
+                              const updatedMsg = {
+                                ...msg, 
+                                images: base64Images
+                              };
+                              console.log('🎯 [FRONTEND] Updated message with base64 images:', updatedMsg);
+                              return updatedMsg;
+                            }
+                            return msg;
+                          });
+                          console.log('🎯 [FRONTEND] Messages after update:', updatedMessages);
+                          return updatedMessages;
+                        });
+                      });
+                    } else {
+                      console.log('🎯 [FRONTEND] No processed images or invalid data:', data);
+                    }
+                  } catch (parseError) {
+                    console.warn('🎯 [FRONTEND] Failed to parse images event:', parseError);
+                  }
                 }
               }
             }
