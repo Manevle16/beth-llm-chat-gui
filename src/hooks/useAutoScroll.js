@@ -217,12 +217,6 @@ export const useAutoScroll = () => {
    */
   const enableAutoScroll = useCallback(() => {
     try {
-      // Batch state updates
-      throttledStateUpdate(() => {
-        setAutoScrollEnabled(true);
-        setUserHasScrolledUp(false);
-        setScrollPosition(SCROLL_POSITION.AT_BOTTOM);
-      });
       
       // Scroll to bottom
       if (scrollContainerRef.current) {
@@ -246,6 +240,8 @@ export const useAutoScroll = () => {
           isAutoScrolling.current = false;
         }, AUTO_SCROLL_CONFIG.ANIMATION_DURATION);
       }
+      resetAutoScrollState();
+      startContinuousScroll();
       
       // Clear any previous errors
       if (error) {
