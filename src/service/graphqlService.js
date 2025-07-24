@@ -18,6 +18,7 @@ export const GET_MESSAGES = gql`
         mimeType
         contentHash
         createdAt
+        url
       }
     }
   }
