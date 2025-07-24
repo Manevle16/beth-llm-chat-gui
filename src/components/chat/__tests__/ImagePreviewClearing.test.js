@@ -59,6 +59,7 @@ jest.mock('../DownArrowButton', () => {
 describe('Image Preview Clearing', () => {
   const defaultProps = {
     messages: [],
+    setMessages: jest.fn(),
     loadingMessages: false,
     streaming: false,
     error: null,
@@ -107,7 +108,7 @@ describe('Image Preview Clearing', () => {
     expect(screen.getByTestId('selected-images-count')).toHaveTextContent('1');
   });
 
-  it('does not clear text input or images when sending fails', async () => {
+  it('clears text input and images immediately when sending, even if it fails', async () => {
     const errorMessage = 'Upload failed';
     mockSendMessageWithImages.mockRejectedValueOnce(new Error(errorMessage));
     
@@ -123,11 +124,14 @@ describe('Image Preview Clearing', () => {
       // Verify that error was set
       expect(defaultProps.setError).toHaveBeenCalledWith(errorMessage);
       
-      // Verify that text input was NOT cleared
-      expect(defaultProps.setNewMessage).not.toHaveBeenCalledWith('');
+      // Verify that text input was cleared immediately (optimistic UI)
+      expect(defaultProps.setNewMessage).toHaveBeenCalledWith('');
       
-      // Verify that images were NOT cleared
-      expect(mockClearImages).not.toHaveBeenCalled();
+      // Verify that images were cleared immediately (optimistic UI)
+      expect(mockClearImages).toHaveBeenCalled();
+      
+      // Verify that messages were added to UI
+      expect(defaultProps.setMessages).toHaveBeenCalled();
     });
     
     consoleSpy.mockRestore();

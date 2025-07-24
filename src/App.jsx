@@ -298,6 +298,7 @@ function App() {
           />
                       <ChatPanel
               messages={messages}
+              setMessages={setMessages}
               loadingMessages={loadingMessages}
               streaming={streaming}
               error={error}

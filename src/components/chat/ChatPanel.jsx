@@ -6,6 +6,7 @@ import { useImageUpload } from "../../hooks/useImageUpload";
 
 const ChatPanel = memo(({
   messages,
+  setMessages,
   loadingMessages,
   streaming,
   error,
@@ -101,13 +102,50 @@ const ChatPanel = memo(({
     
     try {
       if (selectedImages && selectedImages.length > 0) {
+        // Create user message with images
+        const userMsg = {
+          id: `user-${Date.now()}`,
+          conversationId: selectedConversation,
+          text: newMessage,
+          sender: "user",
+          timestamp: new Date().toISOString(),
+          hasImages: true,
+          images: selectedImages
+        };
+        
+        // Create placeholder assistant message
+        const assistantMsg = {
+          id: `llm-${Date.now()}`,
+          conversationId: selectedConversation,
+          text: "...",
+          sender: "llm",
+          timestamp: new Date().toISOString()
+        };
+        
+        // Optimistically add both messages to UI
+        setMessages((prev) => [...prev, userMsg, assistantMsg]);
+        
+        // Clear the text input and images immediately
+        setNewMessage("");
+        clearImages();
+        
         // Send message with images using the image upload service
         const llmModel = currentConversation?.llmModel || 'qwen2.5vl:32b'; // Default to qwen2.5vl:32b for vision
-        await sendMessageWithImages(selectedConversation, newMessage, llmModel);
-        // Clear the text input after successful send with images
-        setNewMessage("");
-        // Also clear images to ensure they're removed from the UI
-        clearImages();
+        
+        try {
+          const response = await sendMessageWithImages(selectedConversation, newMessage, llmModel);
+          
+          // Update assistant message with the response
+          if (response && response.responseText) {
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === assistantMsg.id ? { ...msg, text: response.responseText } : msg))
+            );
+          }
+        } catch (uploadError) {
+          // Remove the placeholder assistant message on error
+          setMessages((prev) => prev.filter(msg => msg.id !== assistantMsg.id));
+          throw uploadError;
+        }
       } else {
         // Send regular text message using the existing onSendMessage
         await onSendMessage();
@@ -116,7 +154,7 @@ const ChatPanel = memo(({
       console.error('Error sending message:', error);
       setError(error.message || 'Failed to send message');
     }
-  }, [newMessage, selectedConversation, currentConversation, selectedImages, sendMessageWithImages, onSendMessage, setError, setNewMessage, clearImages]);
+  }, [newMessage, selectedConversation, currentConversation, selectedImages, sendMessageWithImages, onSendMessage, setError, setNewMessage, clearImages, setMessages]);
 
   // Memoize the MessageList props to prevent unnecessary re-renders
   const messageListProps = useMemo(() => ({
