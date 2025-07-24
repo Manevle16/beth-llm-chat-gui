@@ -7,6 +7,8 @@ import { useImageUpload } from "../../hooks/useImageUpload";
 const ChatPanel = memo(({
   messages,
   setMessages,
+  streamingMessages,
+  setStreamingMessages,
   loadingMessages,
   streaming,
   error,
@@ -145,8 +147,9 @@ const ChatPanel = memo(({
           timestamp: new Date().toISOString()
         };
         
-        // Optimistically add both messages to UI
-        setMessages((prev) => [...prev, userMsg, assistantMsg]);
+        // Add user message to database messages and assistant message to streaming messages
+        setMessages((prev) => [...prev, userMsg]);
+        setStreamingMessages((prev) => [...prev, assistantMsg]);
         
         // Clear the text input and images immediately
         setNewMessage("");
@@ -215,7 +218,7 @@ const ChatPanel = memo(({
                     if (data.token) {
                       assistantText += data.token;
                       // Update assistant message in UI in real-time
-                      setMessages((prev) =>
+                      setStreamingMessages((prev) =>
                         prev.map((msg) => (msg.id === assistantMsg.id ? { ...msg, text: assistantText || "..." } : msg))
                       );
                     }
@@ -308,7 +311,7 @@ const ChatPanel = memo(({
                                 ...msg, 
                                 images: base64Images
                               };
-                              console.log('🎯 [FRONTEND] Updated message with base64 images:', updatedMsg);
+                              console.log('�� [FRONTEND] Updated message with base64 images:', updatedMsg);
                               return updatedMsg;
                             }
                             return msg;
@@ -330,7 +333,7 @@ const ChatPanel = memo(({
           
         } catch (uploadError) {
           // Remove the placeholder assistant message on error
-          setMessages((prev) => prev.filter(msg => msg.id !== assistantMsg.id));
+          setStreamingMessages((prev) => prev.filter(msg => msg.id !== assistantMsg.id));
           throw uploadError;
         } finally {
           // Always reset streaming state
@@ -348,7 +351,7 @@ const ChatPanel = memo(({
       setStreaming(false);
       setCurrentSessionId(null);
     }
-  }, [newMessage, selectedConversation, currentConversation, selectedImages, onSendMessage, setError, setNewMessage, clearImages, setMessages, setStreaming, setCurrentSessionId]);
+  }, [newMessage, selectedConversation, currentConversation, selectedImages, onSendMessage, setError, setNewMessage, clearImages, setMessages, setStreaming, setCurrentSessionId, setStreamingMessages]);
 
   // Memoize the MessageList props to prevent unnecessary re-renders
   const messageListProps = useMemo(() => ({

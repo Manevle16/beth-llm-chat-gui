@@ -62,6 +62,8 @@ describe('Image Preview Clearing', () => {
   const defaultProps = {
     messages: [],
     setMessages: jest.fn(),
+    streamingMessages: [],
+    setStreamingMessages: jest.fn(),
     loadingMessages: false,
     streaming: false,
     error: null,
@@ -76,7 +78,9 @@ describe('Image Preview Clearing', () => {
     setError: jest.fn(),
     onTerminateStream: jest.fn(),
     currentSessionId: null,
-    onAutoScrollStateChange: jest.fn()
+    onAutoScrollStateChange: jest.fn(),
+    setStreaming: jest.fn(),
+    setCurrentSessionId: jest.fn()
   };
 
   beforeEach(() => {

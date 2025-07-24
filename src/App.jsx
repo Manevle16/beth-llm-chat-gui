@@ -33,6 +33,7 @@ function App() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [streamingMessages, setStreamingMessages] = useState([]); // Track streaming messages separately
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
@@ -81,13 +82,22 @@ function App() {
     setLoadingMessages(true);
     try {
       const data = await getMessages(conversationId);
-      setMessages(data.messages || []);
+      const dbMessages = data.messages || [];
+      
+      // Merge database messages with any active streaming messages for this conversation
+      const activeStreamingMessages = streamingMessages.filter(msg => msg.conversationId === conversationId);
+      const mergedMessages = [...dbMessages, ...activeStreamingMessages];
+      
+      // Sort by timestamp to maintain proper order
+      mergedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      setMessages(mergedMessages);
     } catch (err) {
       setError("Failed to load messages");
     } finally {
       setLoadingMessages(false);
     }
-  }, [selectedConversation, getMessages]);
+  }, [selectedConversation, getMessages]); // Removed streamingMessages from dependencies
 
   // Fetch available models for modal
   const loadModels = useCallback(async () => {
@@ -121,12 +131,35 @@ function App() {
     }
   }, [selectedConversation, loadMessages]);
 
+  // Update messages when streaming messages change (without triggering loading state)
+  useEffect(() => {
+    if (selectedConversation) {
+      // Get current database messages (without triggering a reload)
+      setMessages(prevMessages => {
+        // Filter out any streaming messages from previous state
+        const dbMessages = prevMessages.filter(msg => 
+          !streamingMessages.some(streamMsg => streamMsg.id === msg.id)
+        );
+        
+        // Add current streaming messages
+        const activeStreamingMessages = streamingMessages.filter(msg => msg.conversationId === selectedConversation);
+        const mergedMessages = [...dbMessages, ...activeStreamingMessages];
+        
+        // Sort by timestamp to maintain proper order
+        mergedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        return mergedMessages;
+      });
+    }
+  }, [streamingMessages, selectedConversation]);
+
   // Handlers
   const handleSelectConversation = useCallback((id) => {
+    // Do not clear streaming messages on conversation switch
     setSelectedConversation(id);
     setOpenMenuId(null);
     setError(null);
-  }, []);
+  }, [selectedConversation]);
 
   const handleNewConversation = useCallback(() => {
     setModalTitle("");
@@ -153,6 +186,8 @@ function App() {
     if (!window.confirm("Delete this conversation?")) return;
     try {
       await deleteConversation(id);
+      // Clear any streaming messages for this conversation
+      setStreamingMessages(prev => prev.filter(msg => msg.conversationId !== id));
       await loadConversations();
       if (selectedConversation === id) {
         setSelectedConversation(null);
@@ -182,19 +217,21 @@ function App() {
       sender: "user",
       timestamp: new Date().toISOString()
     };
-    // Optimistically add user message
+    
+    // Add user message to database messages (this will be saved to DB)
     setMessages((prev) => [...prev, userMsg]);
     setNewMessage("");
-    let assistantMsg = null;
-    // Add a placeholder for the assistant message immediately after user message
-    assistantMsg = {
+    
+    const assistantMsg = {
       id: `llm-${Date.now()}`,
       conversationId: selectedConversation,
       text: "...",
       sender: "llm",
       timestamp: new Date().toISOString()
     };
-    setMessages((prev) => [...prev, assistantMsg]);
+    
+    // Add assistant message to streaming messages (temporary until completed)
+    setStreamingMessages((prev) => [...prev, assistantMsg]);
 
     try {
       const response = await fetch("https://localhost:3443/api/stream-message", {
@@ -224,8 +261,8 @@ function App() {
               const data = JSON.parse(event.slice(6));
               if (data.token) {
                 assistantText += data.token;
-                // Update assistant message in UI
-                setMessages((prev) =>
+                // Update assistant message in streaming messages
+                setStreamingMessages((prev) =>
                   prev.map((msg) => (msg.id === assistantMsg.id ? { ...msg, text: assistantText || "..." } : msg))
                 );
               }
@@ -247,6 +284,8 @@ function App() {
     } finally {
       setStreaming(false);
       setCurrentSessionId(null);
+      // Remove the streaming message since it's now completed and saved to DB
+      setStreamingMessages((prev) => prev.filter(msg => msg.id !== assistantMsg.id));
     }
   }, [newMessage, selectedConversation, conversations]);
 
@@ -271,6 +310,8 @@ function App() {
   const handleDeleteMessagesAfter = useCallback(async (conversationId, messageId) => {
     try {
       await deleteMessagesAfter(conversationId, messageId);
+      // Clear any streaming messages for this conversation since we're deleting messages
+      setStreamingMessages(prev => prev.filter(msg => msg.conversationId !== conversationId));
       await loadMessages(conversationId);
     } catch (err) {
       setError("Failed to delete messages");
@@ -299,6 +340,8 @@ function App() {
                       <ChatPanel
               messages={messages}
               setMessages={setMessages}
+              streamingMessages={streamingMessages}
+              setStreamingMessages={setStreamingMessages}
               loadingMessages={loadingMessages}
               streaming={streaming}
               error={error}
