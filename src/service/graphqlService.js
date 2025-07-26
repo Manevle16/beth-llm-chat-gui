@@ -44,8 +44,14 @@ export const GET_CONVERSATIONS = gql`
 export const GET_AVAILABLE_MODELS = gql`
   query GetAvailableModels {
     availableModels {
-      models
+      models {
+        name
+        provider
+        displayName
+        available
+      }
       count
+      providers
     }
   }
 `;

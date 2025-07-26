@@ -82,9 +82,9 @@ const NewConversationModal = ({
               marginBottom: 8
             }}
           >
-            {availableModels.map((m) => (
-              <option key={m} value={m}>
-                {m}
+            {availableModels.map((model) => (
+              <option key={model.name} value={model.name}>
+                {model.displayName || model.name}
               </option>
             ))}
           </select>

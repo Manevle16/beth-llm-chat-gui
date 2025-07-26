@@ -108,7 +108,8 @@ function App() {
       const models = data.availableModels.models || [];
       setAvailableModels(models);
       // Default to llama3.1:8b if available
-      setModalModel(models.includes("llama3.1:8b") ? "llama3.1:8b" : models[0] || "");
+      const llamaModel = models.find(m => m.name === "llama3.1:8b");
+      setModalModel(llamaModel ? llamaModel.name : (models[0]?.name || ""));
     } catch (err) {
       setModelsError("Failed to load models");
     } finally {
@@ -174,7 +175,8 @@ function App() {
       const data = await createConversation(id, modalTitle, modalModel);
       setShowModal(false);
       setModalTitle("");
-      setModalModel(availableModels.includes("llama3.1:8b") ? "llama3.1:8b" : availableModels[0] || "");
+      const llamaModel = availableModels.find(m => m.name === "llama3.1:8b");
+      setModalModel(llamaModel ? llamaModel.name : (availableModels[0]?.name || ""));
       await loadConversations();
       setSelectedConversation(data.createConversation.conversation.id);
     } catch (err) {
